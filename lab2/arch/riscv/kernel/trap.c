@@ -8,6 +8,7 @@ void trap_handler(unsigned long scause, unsigned long sepc) {
             // 如果是timer interrupt 则打印输出相关信息, 并通过 `clock_set_next_event()` 设置下一次时钟中断
             printk("[S] Time interrupt!\n"); 
             clock_set_next_event();
+            do_timer();
         }
     }
     // `clock_set_next_event()` 见 4.3.4 节

@@ -31,6 +31,7 @@ _start:
     # set sstatus[SIE] = 1
 
     la sp,boot_stack_top # store the address of the stack top into the register sp
+    jal mm_init
     jal task_init
     jal start_kernel
     .section .bss.stack

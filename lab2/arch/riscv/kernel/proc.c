@@ -27,8 +27,11 @@ void task_init() {
     // 3. 由于 idle 不参与调度 可以将其 counter / priority 设置为 0
     // 4. 设置 idle 的 pid 为 0
     // 5. 将 current 和 task[0] 指向 idle
-
-    /* YOUR CODE HERE */
+    idle = (struct task_struct*)kalloc();
+    idle->state = TASK_RUNNING;
+    idle->counter = 0;
+    idle->pid = 0;
+    current = task[0] = idle;
 
     // 1. 参考 idle 的设置, 为 task[1] ~ task[NR_TASKS - 1] 进行初始化
     // 2. 其中每个线程的 state 为 TASK_RUNNING, 此外，为了单元测试的需要，counter 和 priority 进行如下赋值：
@@ -36,7 +39,15 @@ void task_init() {
     //      task[i].priority = task_test_priority[i];
     // 3. 为 task[1] ~ task[NR_TASKS - 1] 设置 `thread_struct` 中的 `ra` 和 `sp`,
     // 4. 其中 `ra` 设置为 __dummy （见 4.3.2）的地址,  `sp` 设置为 该线程申请的物理页的高地址
-
+    for(int i = 1;i < NR_TASKS;i++){
+        task[i] = (struct task_struct*)kalloc(); 
+        task[i]->state = TASK_RUNNING;
+        task[i]->counter = task_test_counter[i]; 
+        task[i]->priority = task_test_priority[i]; 
+        task[i]->pid = i;
+        task[i]->thread.ra = (uint64)&__dummy;
+        task[i]->thread.sp = (uint64)task[i] + PGSIZE;
+    }
     /* YOUR CODE HERE */
     #define OFFSET(TYPE , MEMBER) ((unsigned long)(&(((TYPE *)0)->MEMBER)))
 
@@ -81,8 +92,9 @@ void switch_to(struct task_struct* next) {
     if (current == next)
         return;
     else{
-        __switch_to(current,next);
+        struct task_struct *prev = current;
         current = next;
+        __switch_to(prev,next);
     }
 }
 
@@ -95,9 +107,42 @@ void do_timer(void) {
     if (current == idle) 
         schedule();
     else {
-        if (--current->counter > 0)
+        if ((long)(--(current->counter)) > 0)
             return;
-        else
+        else {
+            current->counter = 0;
             schedule();
+        }
     }
+}
+
+void schedule(){
+    int random_task_id;
+    int is_all_zero = 1;
+
+    // Check if all task counters are zero
+    for(int i = 1; i < NR_TASKS; ++i) {
+        if(task[i]->counter > 0) {
+            is_all_zero = 0;
+            break;
+        }
+    }
+
+    // If all counters are zero, reset them to random values
+    if(is_all_zero) {
+        for(int i = 1; i < NR_TASKS; ++i) {
+            task[i]->counter = rand();
+            printk("SET [PID = %d COUNTER = %d]\n", i, task[i]->counter);
+        }
+    }
+
+    // Randomly select a task to execute
+    random_task_id = (rand() % (NR_TASKS - 1)) + 1; // Generate a random task ID
+    while (task[random_task_id]->state != TASK_RUNNING || task[random_task_id]->counter <= 0) {
+        // Make sure the selected task is running and has a positive counter
+        random_task_id = (rand() % (NR_TASKS - 1)) + 1;
+    }
+
+    printk("switch to [PID = %d COUNTER = %d]\n", task[random_task_id]->pid, task[random_task_id]->counter);
+    switch_to(task[random_task_id]);
 }
