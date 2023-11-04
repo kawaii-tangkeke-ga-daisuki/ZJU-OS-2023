@@ -115,7 +115,6 @@ void do_timer(void) {
     }
 }
 
-
 void schedule(){
     #ifdef PRIORITY    
     int c,i,next;
@@ -142,4 +141,80 @@ void schedule(){
 	}
     switch_to(task[next]);
     #endif    
+
+    #ifdef order //select tasks in order,only for test!
+    int selected_task_id = -1;
+    int is_all_zero = 1;
+    // Check if all task counters are zero
+    for(int i = 1; i < NR_TASKS; ++i) {
+        if(task[i]->counter > 0) {
+            is_all_zero = 0;
+            break;
+        }
+    }
+
+    // If all counters are zero, reset them to random values
+    if(is_all_zero) {
+        for(int i = 1; i < NR_TASKS; ++i) {
+            task[i]->counter = rand();
+            printk("SET [PID = %d COUNTER = %d]\n", i, task[i]->counter);
+        }
+    }
+
+    // Find the task with the smallest id that is still running
+    for(int i = 1; i < NR_TASKS; ++i) {
+        if(task[i]->state == TASK_RUNNING && task[i]->counter > 0) {
+            selected_task_id = i;
+            break;
+        }
+    }
+
+    // If a task is found, switch to it
+    if(selected_task_id != -1) {
+        printk("switch to [PID = %d COUNTER = %d]\n", task[selected_task_id]->pid, task[selected_task_id]->counter);
+        switch_to(task[selected_task_id]);
+    } else {
+        // No task to schedule
+        printk("No runnable tasks, system is idle or re-schedule\n");
+    }
+    #endif
+
+    #ifdef DSJF
+    int selected_task_id = -1;
+    int min_remaining_time = 1e10;
+    int is_all_zero = 1;
+
+    // Check if all running task counters are zero
+    for(int i = 1; i < NR_TASKS; ++i) {
+        if(task[i]->state == TASK_RUNNING && task[i]->counter > 0) {
+            is_all_zero = 0;
+            break;
+        }
+    }
+
+    // If all running task counters are zero, reset them to random values
+    if(is_all_zero) {
+        for(int i = 1; i < NR_TASKS; ++i) {
+            task[i]->counter = rand();
+            printk("SET [PID = %d COUNTER = %d]\n", task[i]->pid, task[i]->counter);
+        }
+    }
+
+    // Find the running task with the smallest remaining time
+    for(int i = 1; i < NR_TASKS; ++i) {
+        if(task[i]->state == TASK_RUNNING && task[i]->counter > 0 && task[i]->counter < min_remaining_time) {
+            min_remaining_time = task[i]->counter;
+            selected_task_id = i;
+        }
+    }
+
+    // If a task is found, switch to it
+    if(selected_task_id != -1) {
+        printk("switch to [PID = %d COUNTER = %d]\n", task[selected_task_id]->pid, task[selected_task_id]->counter);
+        switch_to(task[selected_task_id]);
+    } else {
+        // No task to schedule
+        printk("No runnable tasks with remaining time, system is idle or re-schedule\n");
+    }
+    #endif
 }
