@@ -48,20 +48,19 @@ void task_init() {
         task[i]->thread.ra = (uint64)&__dummy;
         task[i]->thread.sp = (uint64)task[i] + PGSIZE;
     }
-    /* YOUR CODE HERE */
-    #define OFFSET(TYPE , MEMBER) ((unsigned long)(&(((TYPE *)0)->MEMBER)))
+    //#define OFFSET(TYPE , MEMBER) ((unsigned long)(&(((TYPE *)0)->MEMBER)))
 
-const uint64 OffsetOfThreadInTask = (uint64)OFFSET(struct task_struct, thread);
-const uint64 OffsetOfRaInTask = OffsetOfThreadInTask+(uint64)OFFSET(struct thread_struct, ra);
-const uint64 OffsetOfSpInTask = OffsetOfThreadInTask+(uint64)OFFSET(struct thread_struct, sp);
-const uint64 OffsetOfSInTask = OffsetOfThreadInTask+(uint64)OFFSET(struct thread_struct, s);
-printk("%d",OffsetOfThreadInTask);
-printk("\n");
-printk("%d",OffsetOfRaInTask);
-printk("\n");
-printk("%d",OffsetOfSpInTask);
-printk("\n");
-printk("%d",OffsetOfSInTask);
+    //const uint64 OffsetOfThreadInTask = (uint64)OFFSET(struct task_struct, thread);
+    //const uint64 OffsetOfRaInTask = OffsetOfThreadInTask+(uint64)OFFSET(struct thread_struct, ra);
+    //const uint64 OffsetOfSpInTask = OffsetOfThreadInTask+(uint64)OFFSET(struct thread_struct, sp);
+    //const uint64 OffsetOfSInTask = OffsetOfThreadInTask+(uint64)OFFSET(struct thread_struct, s);
+    //printk("%d",OffsetOfThreadInTask);
+    //printk("\n");
+    //printk("%d",OffsetOfRaInTask);
+    //printk("\n");
+    //printk("%d",OffsetOfSpInTask);
+    //printk("\n");
+    //printk("%d",OffsetOfSInTask);
 
     printk("...proc_init done!\n");
 }
@@ -116,33 +115,31 @@ void do_timer(void) {
     }
 }
 
-void schedule(){
-    int random_task_id;
-    int is_all_zero = 1;
 
-    // Check if all task counters are zero
-    for(int i = 1; i < NR_TASKS; ++i) {
-        if(task[i]->counter > 0) {
-            is_all_zero = 0;
+void schedule(){
+    #ifdef PRIORITY    
+    int c,i,next;
+    static int isInitialized = 0;
+    while (1) {
+        c = -1;
+		next = 0;
+		i = NR_TASKS;
+		while (--i) {
+			if (!task[i])
+			    continue;
+			if (task[i]->state == TASK_RUNNING && (long)(task[i]->counter) > c)
+				c = task[i]->counter, next = i;
+		    }
+		if (c) {
+            printk("switch to [PID = %d PRIORITY = %d COUNTER = %d]\n", next, task[next]->priority, task[next]->counter);
             break;
         }
-    }
-
-    // If all counters are zero, reset them to random values
-    if(is_all_zero) {
-        for(int i = 1; i < NR_TASKS; ++i) {
-            task[i]->counter = rand();
-            printk("SET [PID = %d COUNTER = %d]\n", i, task[i]->counter);
-        }
-    }
-
-    // Randomly select a task to execute
-    random_task_id = (rand() % (NR_TASKS - 1)) + 1; // Generate a random task ID
-    while (task[random_task_id]->state != TASK_RUNNING || task[random_task_id]->counter <= 0) {
-        // Make sure the selected task is running and has a positive counter
-        random_task_id = (rand() % (NR_TASKS - 1)) + 1;
-    }
-
-    printk("switch to [PID = %d COUNTER = %d]\n", task[random_task_id]->pid, task[random_task_id]->counter);
-    switch_to(task[random_task_id]);
+		for(i = 1; i < NR_TASKS ; ++i)
+			if (task[i]) {
+				task[i]->counter = (task[i]->counter >> 1) + task[i]->priority / 10;
+                printk("SET [PID = %d PRIORITY = %d COUNTER = %d]\n", i, task[i]->priority, task[i]->counter);
+            }
+	}
+    switch_to(task[next]);
+    #endif    
 }
