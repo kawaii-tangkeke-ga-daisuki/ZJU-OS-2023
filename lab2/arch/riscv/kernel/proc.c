@@ -48,19 +48,15 @@ void task_init() {
         task[i]->thread.ra = (uint64)&__dummy;
         task[i]->thread.sp = (uint64)task[i] + PGSIZE;
     }
-    //#define OFFSET(TYPE , MEMBER) ((unsigned long)(&(((TYPE *)0)->MEMBER)))
+    #define OFFSET(TYPE , MEMBER) ((unsigned long)(&(((TYPE *)0)->MEMBER)))
 
-    //const uint64 OffsetOfThreadInTask = (uint64)OFFSET(struct task_struct, thread);
-    //const uint64 OffsetOfRaInTask = OffsetOfThreadInTask+(uint64)OFFSET(struct thread_struct, ra);
-    //const uint64 OffsetOfSpInTask = OffsetOfThreadInTask+(uint64)OFFSET(struct thread_struct, sp);
-    //const uint64 OffsetOfSInTask = OffsetOfThreadInTask+(uint64)OFFSET(struct thread_struct, s);
-    //printk("%d",OffsetOfThreadInTask);
-    //printk("\n");
-    //printk("%d",OffsetOfRaInTask);
-    //printk("\n");
-    //printk("%d",OffsetOfSpInTask);
-    //printk("\n");
-    //printk("%d",OffsetOfSInTask);
+    const uint64 OffsetOfThreadInTask = (uint64)OFFSET(struct task_struct, thread);
+    const uint64 OffsetOfRaInTask = OffsetOfThreadInTask+(uint64)OFFSET(struct thread_struct, ra);
+    const uint64 OffsetOfSpInTask = OffsetOfThreadInTask+(uint64)OFFSET(struct thread_struct, sp);
+    const uint64 OffsetOfSInTask = OffsetOfThreadInTask+(uint64)OFFSET(struct thread_struct, s);
+    printk("%d\n",OffsetOfRaInTask);
+    printk("%d\n",OffsetOfSpInTask);
+    printk("%d\n",OffsetOfSInTask);
 
     printk("...proc_init done!\n");
 }
@@ -179,7 +175,7 @@ void schedule(){
     }
     #endif
 
-    #ifdef DSJF
+    #ifdef SJF
     int selected_task_id = -1;
     int min_remaining_time = 1e10;
     int is_all_zero = 1;
