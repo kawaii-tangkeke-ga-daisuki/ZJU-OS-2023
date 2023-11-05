@@ -179,7 +179,7 @@ void schedule(){
     }
     #endif
 
-    #ifdef DSJF
+    #ifdef SJF
     int selected_task_id = -1;
     int min_remaining_time = 1e10;
     int is_all_zero = 1;
