@@ -3,6 +3,9 @@
     .section .text.init
     .globl _start
 _start:
+    la sp,boot_stack_top # store the address of the stack top into the register sp
+    jal mm_init
+    
     la t0,_traps
     csrw stvec,t0
     # set stvec = _traps
@@ -30,8 +33,7 @@ _start:
     csrw sstatus,t0
     # set sstatus[SIE] = 1
 
-    la sp,boot_stack_top # store the address of the stack top into the register sp
-    jal mm_init
+    
     jal task_init
     jal start_kernel
     .section .bss.stack
