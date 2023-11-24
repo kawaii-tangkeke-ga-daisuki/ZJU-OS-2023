@@ -1,4 +1,10 @@
 .extern start_kernel
+.extern setup_vm
+.extern mm_init
+.extern task_init
+.extern _traps
+
+.set PA2VA_OFFSET, (0xffffffff00000000 - 0xffffffe000000000)
 
     .section .text.init
     .globl _start

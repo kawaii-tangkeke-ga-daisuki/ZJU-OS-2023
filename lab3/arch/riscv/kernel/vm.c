@@ -1,4 +1,5 @@
 #include "defs.h"
+#include "string.h"
 
 /* early_pgtbl: 用于 setup_vm 进行 1GB 的 映射。 */
 unsigned long  early_pgtbl[512] __attribute__((__aligned__(0x1000)));
