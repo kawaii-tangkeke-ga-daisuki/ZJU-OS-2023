@@ -1,20 +1,18 @@
 .extern start_kernel
 
-.set PA2VA_OFFSET, (0xffffffe000000000 - 0x80000000)
-
+.set _shift_left_satp_mode8, 0x3f
+.set _sp_top, 0x0000000080208000 // physical boot_stack_top 4K * 8, need to set manually, because boot_stack_top has been coverted into virtual address
     .section .text.init
     .globl _start
 _start:
-    la sp, boot_stack_top # store the address of the stack top into the register sp
-    li t0, PA2VA_OFFSET
-    sub sp, sp, t0
-    
+    # la sp,boot_stack_top # store the address of the stack top into the register sp
+    li sp, _sp_top
+
     call setup_vm
     call relocate
-
-    jal mm_init
-
+    call mm_init
     call setup_vm_final
+    call task_init
     
     la t0,_traps
     csrw stvec,t0
@@ -43,25 +41,26 @@ _start:
     csrw sstatus,t0
     # set sstatus[SIE] = 1
 
-    jal task_init
     jal start_kernel
 
 relocate:
     # set ra = ra + PA2VA_OFFSET
     # set sp = sp + PA2VA_OFFSET (If you have set the sp before)
+    .set PA2VA_OFFSET, 0xffffffdf80000000
     li t0, PA2VA_OFFSET
     add ra, ra, t0
     add sp, sp, t0
 
     # set satp with early_pgtbl
-    li t0, 8
-    slli t0, t0, 60
-    la t1, early_pgtbl
-    li t2, PA2VA_OFFSET
-    sub t1, t1, t2
-    srli t1, t1, 12
-    or t0, t0, t1
-    csrw satp, t0
+    la t2, early_pgtbl
+    sub t2, t2, t0 # VA->PA
+    srli t2, t2, 12 # PA->PPN
+    # t0 = MODE8
+    addi t0, x0, 1
+    li t1, 63
+    sll t0, t0, t1
+    or t2, t2, t0
+    csrw satp, t2
     
     # flush tlb
     sfence.vma zero, zero
