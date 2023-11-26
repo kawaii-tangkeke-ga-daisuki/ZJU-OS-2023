@@ -1,5 +1,8 @@
 #include "defs.h"
 #include "string.h"
+#include "mm.h"
+
+void create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm);
 
 /* early_pgtbl: 用于 setup_vm 进行 1GB 的 映射。 */
 unsigned long  early_pgtbl[512] __attribute__((__aligned__(0x1000)));
@@ -32,7 +35,7 @@ void setup_vm_final(void) {
     // mapping kernel text X|-|R|V
      create_mapping(swapper_pg_dir, (uint64)&_stext, (uint64)&_stext - PA2VA_OFFSET, (uint64)&_srodata - (uint64)&_stext,11);
     // mapping kernel rodata -|-|R|V
-     create_mapping(swapper_pg_dir, (uint64)&_srodata, (uint64)&_srodata - PA2VA_OFFSET,(uint64)& _sdata - (uint64)&_srodata,3);
+     create_mapping(swapper_pg_dir, (uint64)&_srodata, (uint64)&_srodata - PA2VA_OFFSET, (uint64)&_sdata - (uint64)&_srodata,3);
     // mapping other memory -|W|R|V
      create_mapping(swapper_pg_dir, (uint64)&_sdata, (uint64)&_sdata - PA2VA_OFFSET,PHY_SIZE - ((uint64)&_sdata - (uint64)&_stext),7);
     

@@ -1,20 +1,20 @@
 .extern start_kernel
-.extern setup_vm
-.extern mm_init
-.extern task_init
-.extern _traps
 
-.set PA2VA_OFFSET, (0xffffffff00000000 - 0xffffffe000000000)
+.set PA2VA_OFFSET, (0xffffffe000000000 - 0x80000000)
 
     .section .text.init
     .globl _start
 _start:
-    la sp,boot_stack_top # store the address of the stack top into the register sp
+    la sp, boot_stack_top # store the address of the stack top into the register sp
+    li t0, PA2VA_OFFSET
+    sub sp, sp, t0
     
     call setup_vm
     call relocate
 
     jal mm_init
+
+    call setup_vm_final
     
     la t0,_traps
     csrw stvec,t0
@@ -54,12 +54,13 @@ relocate:
     add sp, sp, t0
 
     # set satp with early_pgtbl
-    
     li t0, 8
     slli t0, t0, 60
     la t1, early_pgtbl
+    li t2, PA2VA_OFFSET
+    sub t1, t1, t2
     srli t1, t1, 12
-    add t0, t0, t1
+    or t0, t0, t1
     csrw satp, t0
     
     # flush tlb

@@ -74,7 +74,7 @@ void dummy() {
             }                           // in case that the new counter is also 1, leading the information not printed.
             last_counter = current->counter;
             auto_inc_local_var = (auto_inc_local_var + 1) % MOD;
-            printk("[PID = %d] is running. auto_inc_local_var = %d\n", current->pid, auto_inc_local_var);
+            printk("[PID = %d] is running. thread space begin at = %lx\n", current->pid, current);
         }
     }
 }
@@ -126,7 +126,7 @@ void schedule(){
 				c = task[i]->counter, next = i;
 		    }
 		if (c) {
-            printk("switch to [PID = %d PRIORITY = %d COUNTER = %d]\n", next, task[next]->priority, task[next]->counter);
+            printk("\nswitch to [PID = %d PRIORITY = %d COUNTER = %d]\n", next, task[next]->priority, task[next]->counter);
             break;
         }
 		for(i = 1; i < NR_TASKS ; ++i)
@@ -167,7 +167,7 @@ void schedule(){
 
     // If a task is found, switch to it
     if(selected_task_id != -1) {
-        printk("switch to [PID = %d COUNTER = %d]\n", task[selected_task_id]->pid, task[selected_task_id]->counter);
+        printk("\nswitch to [PID = %d COUNTER = %d]\n", task[selected_task_id]->pid, task[selected_task_id]->counter);
         switch_to(task[selected_task_id]);
     } else {
         // No task to schedule
@@ -206,7 +206,7 @@ void schedule(){
 
     // If a task is found, switch to it
     if(selected_task_id != -1) {
-        printk("switch to [PID = %d COUNTER = %d]\n", task[selected_task_id]->pid, task[selected_task_id]->counter);
+        printk("\nswitch to [PID = %d COUNTER = %d]\n", task[selected_task_id]->pid, task[selected_task_id]->counter);
         switch_to(task[selected_task_id]);
     } else {
         // No task to schedule
