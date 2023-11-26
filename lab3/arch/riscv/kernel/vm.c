@@ -24,50 +24,75 @@ void setup_vm(void) {
     return;
 }
 
-/* swapper_pg_dir: kernel pagetable 根目录， 在 setup_vm_final 进行映射。 */
-// unsigned long  swapper_pg_dir[512] __attribute__((__aligned__(0x1000)));
-
-// void setup_vm_final(void) {
-//     memset(swapper_pg_dir, 0x0, PGSIZE);
-
-//     // No OpenSBI mapping required
-
-//     // mapping kernel text X|-|R|V
-//     create_mapping(,,,,11);
-
-//     // mapping kernel rodata -|-|R|V
-//     create_mapping(,,,,3);
+unsigned long  swapper_pg_dir[512] __attribute__((__aligned__(0x1000)));
+extern uint64 _skernel,_stext, _srodata, _sdata, _sbss;
+void setup_vm_final(void) {
+     memset(swapper_pg_dir, 0x0, PGSIZE);
+    // No OpenSBI mapping required
+    // mapping kernel text X|-|R|V
+     create_mapping(swapper_pg_dir, (uint64)&_stext, (uint64)&_stext - PA2VA_OFFSET, (uint64)&_srodata - (uint64)&_stext,11);
+    // mapping kernel rodata -|-|R|V
+     create_mapping(swapper_pg_dir, (uint64)&_srodata, (uint64)&_srodata - PA2VA_OFFSET,(uint64)& _sdata - (uint64)&_srodata,3);
+    // mapping other memory -|W|R|V
+     create_mapping(swapper_pg_dir, (uint64)&_sdata, (uint64)&_sdata - PA2VA_OFFSET,PHY_SIZE - ((uint64)&_sdata - (uint64)&_stext),7);
     
-//     // mapping other memory -|W|R|V
-//     create_mapping(,,,,7);
-    
-//     // set satp with swapper_pg_dir
+    // set satp with swapper_pg_dir
+asm volatile (
+        "mv t0, %[swapper_pg_dir]\n"
 
+        ".set _pa2va_, 0xffffffdf80000000\n"
+        "li t1, _pa2va_\n"
+        "sub t0, t0, t1\n"
+        "srli t0, t0, 12\n"
+        "addi t2, zero, 1\n"
+        "slli t2, t2, 31\n"
+        "slli t2, t2, 31\n"
+        "slli t2, t2, 1\n"
+        "or t0, t0, t2\n"
+
+        "csrw satp, t0\n"
+
+        : : [swapper_pg_dir] "r" (swapper_pg_dir)
+        : "memory"        
+    );
 //     YOUR CODE HERE
 
-//     // flush TLB
-//     asm volatile("sfence.vma zero, zero");
+    // flush TLB
+    asm volatile("sfence.vma zero, zero");
   
-//     // flush icache
-//     asm volatile("fence.i")
-//     return;
-// }
+    // flush icache
+    asm volatile("fence.i");
+    return;
+}
 
 
-// /* 创建多级页表映射关系 */
-// /* 不要修改该接口的参数和返回值 */
-// create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, int perm) {
-//     /*
-//     pgtbl 为根页表的基地址
-//     va, pa 为需要映射的虚拟地址、物理地址
-//     sz 为映射的大小
-//     perm 为映射的读写权限
+/**** 创建多级页表映射关系 *****/
+/* 不要修改该接口的参数和返回值 */
+void create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) {
+    uint64 VPN[3];
+    uint64 *page_table[3];
+    uint64 *new_page;
 
-//     创建多级页表的时候可以使用 kalloc() 来获取一页作为页表目录
-//     可以使用 V bit 来判断页表项是否存在
-//     */
+    for (uint64 addr = va; addr < va + sz; addr += PGSIZE, pa += PGSIZE) {
+        page_table[2] = pgtbl;
 
+        // 为每个级别的页表计算VPN
+        VPN[2] = (addr >> 30) & 0x1ff;
+        VPN[1] = (addr >> 21) & 0x1ff;
+        VPN[0] = (addr >> 12) & 0x1ff;
 
-// }
+        // 检查并创建每个级别的页表项
+        for (int level = 2; level > 0; level--) {
+            if ((page_table[level][VPN[level]] & 1) == 0) {
+                new_page = (uint64 *)kalloc();
+                page_table[level][VPN[level]] = ((((uint64)new_page - PA2VA_OFFSET) >> 12) << 10) | 1;
+            }
+            page_table[level - 1] = (uint64 *)((page_table[level][VPN[level]] >> 10) << 12);
+        }
+
+        // 设置最后一级页表项
+        page_table[0][VPN[0]] = (perm & 0b1111) | ((pa >> 12) << 10);
+    }
+}
 
 
