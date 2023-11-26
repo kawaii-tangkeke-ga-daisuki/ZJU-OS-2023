@@ -2,7 +2,6 @@
 
 .set PA2VA_OFFSET, 0xffffffdf80000000
 .set _shift_left_satp_mode8, 0x3f
-.set _sp_top, 0x0000000080208000 // physical boot_stack_top 4K * 8, need to set manually, because boot_stack_top has been coverted into virtual address
     .section .text.init
     .globl _start
 _start:
