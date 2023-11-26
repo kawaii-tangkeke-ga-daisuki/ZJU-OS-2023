@@ -74,7 +74,7 @@ asm volatile (
 void create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) {
     uint64 VPN[3];
     uint64 *page_table[3];
-    uint64 *new_page;
+    uint64 new_page;
 
     for (uint64 addr = va; addr < va + sz; addr += PGSIZE, pa += PGSIZE) {
         page_table[2] = pgtbl;
@@ -87,8 +87,8 @@ void create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm)
         // 检查并创建每个级别的页表项
         for (int level = 2; level > 0; level--) {
             if ((page_table[level][VPN[level]] & 1) == 0) {
-                new_page = (uint64 *)kalloc();
-                page_table[level][VPN[level]] = ((((uint64)new_page - PA2VA_OFFSET) >> 12) << 10) | 1;
+                new_page = kalloc();
+                page_table[level][VPN[level]] = (((new_page - PA2VA_OFFSET) >> 12) << 10) | 1;
             }
             page_table[level - 1] = (uint64 *)((page_table[level][VPN[level]] >> 10) << 12);
         }
