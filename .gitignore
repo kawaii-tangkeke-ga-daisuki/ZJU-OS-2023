@@ -4,5 +4,7 @@ lab1/
 *.o
 *.out
 *.map
+*.elf
+*.bin
 vmlinux
 Image

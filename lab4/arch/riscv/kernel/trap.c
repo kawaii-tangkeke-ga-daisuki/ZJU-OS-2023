@@ -24,10 +24,14 @@ void trap_handler(uint64_t scause, uint64_t sepc, struct pt_regs *regs) {
     // 其他interrupt / exception 可以直接忽略
     else if (scause == 8) {
         uint64_t ret;
-        if (regs->x[17] == SYS_WRITE)
+        if (regs->x[17] == SYS_WRITE) {
             ret = sys_write((unsigned int)(regs->x[10]), (const char*)(regs->x[11]), (size_t)(regs->x[12]));
-        else if (regs->x[17] == SYS_GETPID)
+            regs->sepc += 4;
+        }
+        else if (regs->x[17] == SYS_GETPID) {
             ret = sys_getpid();
+            regs->sepc += 4;
+        }
         regs->x[10] = ret;
     }
 }

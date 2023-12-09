@@ -3,8 +3,11 @@
     .globl _traps 
 _traps:
     csrr t0, sscratch
-    #beq t0, x0, 
+    beqz t0, _S_mode
+    csrw sscratch, sp
+    mv sp, t0
 
+_S_mode:
     addi sp,sp,-34*8
     sd x0,0*8(sp)
     sd x1,1*8(sp)
@@ -89,6 +92,12 @@ _traps:
     addi x2,x2,34*8   
     # restore sepc and 32 registers (x2(sp) should be restore last) from stack
 
+    csrr t0, sscratch
+    beqz t0, __return
+    csrw sscratch, sp
+    mv sp, t0
+
+__return:
     sret
     # return from trap
 
@@ -97,6 +106,9 @@ _traps:
 __dummy:
     la t0, dummy
     csrw sepc, t0
+    csrr t0, sscratch
+    csrw sscratch, sp
+    mv sp, t0
     sret
 
     .globl __switch_to

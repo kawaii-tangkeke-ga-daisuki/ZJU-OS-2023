@@ -42,9 +42,9 @@ _start:
     ecall
     # set first time interrupt
 
-    csrr t0,sstatus
-    ori t0,t0,0x2
-    csrw sstatus,t0
+    #csrr t0,sstatus
+    #ori t0,t0,0x2
+    #csrw sstatus,t0
     # set sstatus[SIE] = 1
 
     jal start_kernel
