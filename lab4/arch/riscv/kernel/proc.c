@@ -32,7 +32,6 @@ void initialize_process(struct task_struct* process, int pid) {
     process->thread.sp = (uint64)process + PGSIZE;
     process->pgd = (pagetable_t)(alloc_page() - PA2VA_OFFSET);
     memcpy((void*)((uint64)process->pgd + PA2VA_OFFSET), (void*)swapper_pg_dir, PGSIZE);
-    // 如果有其他需要初始化的字段，也可以在这里添加
 }
 
 void task_init() {
