@@ -1,11 +1,12 @@
     .section .text.entry
     .align 2
     .globl _traps 
+.set PA2VA_OFFSET, 0xffffffdf80000000
 _traps:
     csrr t0, sscratch
     beqz t0, _S_mode
     csrw sscratch, sp
-    mv sp, t0
+    mv sp, t0   # switch stack from U-mode to S-mode
 
 _S_mode:
     addi sp,sp,-34*8
@@ -95,7 +96,8 @@ _S_mode:
     csrr t0, sscratch
     beqz t0, __return
     csrw sscratch, sp
-    mv sp, t0
+    mv sp, t0   # switch stack from S-mode to U-mode
+    
 
 __return:
     sret
@@ -104,8 +106,8 @@ __return:
     .extern dummy
     .globl __dummy
 __dummy:
-    la t0, dummy
-    csrw sepc, t0
+    #la t0, 0
+    #csrw sepc, t0
     csrr t0, sscratch
     csrw sscratch, sp
     mv sp, t0
@@ -114,7 +116,7 @@ __dummy:
     .globl __switch_to
 __switch_to:
     # save state to prev process
-    addi t0, a0, 48
+    addi t0, a0, 40
     sd ra, 0*8(t0)
     sd sp, 1*8(t0)
     sd s0, 2*8(t0)
@@ -129,9 +131,15 @@ __switch_to:
     sd s9, 11*8(t0)
     sd s10, 12*8(t0)
     sd s11, 13*8(t0)
+    csrr t1, sepc
+    sd t1, 14*8(t0)
+    csrr t1, sstatus
+    sd t1, 15*8(t0)
+    csrr t1, sscratch
+    sd t1, 16*8(t0)
 
     # restore state from next process
-    addi t0, a1, 48
+    addi t0, a1, 40
     ld ra, 0(t0)
     ld sp, 8(t0)
     ld s0, 2*8(t0)
@@ -146,5 +154,27 @@ __switch_to:
     ld s9, 11*8(t0)
     ld s10, 12*8(t0)
     ld s11, 13*8(t0)
+    ld t1, 14*8(t0)
+    csrw sepc, t1
+    ld t1, 15*8(t0)
+    csrw sstatus, t1
+    ld t1, 16*8(t0)
+    csrw sscratch, t1
+
+    # switch page table
+    addi t0, zero, 1
+    slli t0, t0, 63
+    ld t1, 176(a1)
+    li t2, PA2VA_OFFSET
+    sub t1, t1, t2  #VA->PA
+    srli t1, t1, 12 #get PPN
+    or t0, t0, t1
+    csrw satp, t0
+
+    # flush tlb
+    sfence.vma zero, zero
+		
+    # flush icache
+    fence.i
 
     ret

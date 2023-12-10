@@ -6,7 +6,6 @@
 .extern _traps
 
 .set PA2VA_OFFSET, 0xffffffdf80000000
-.set _shift_left_satp_mode8, 0x3f
     .section .text.init
     .globl _start
 _start:
