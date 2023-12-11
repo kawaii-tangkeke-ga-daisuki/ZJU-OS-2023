@@ -90,11 +90,11 @@ void create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm)
                 new_page = kalloc();
                 page_table[level][VPN[level]] = (((new_page - PA2VA_OFFSET) >> 12) << 10) | 1;
             }
-            page_table[level - 1] = (uint64 *)((page_table[level][VPN[level]] >> 10) << 12);
+            page_table[level - 1] = (uint64 *)(((page_table[level][VPN[level]] >> 10) << 12) + PA2VA_OFFSET);
         }
 
         // 设置最后一级页表项
-        page_table[0][VPN[0]] = (perm & 0b1111) | ((pa >> 12) << 10);
+        page_table[0][VPN[0]] = (perm & 0x3ff) | ((pa >> 12) << 10);
     }
 }
 
