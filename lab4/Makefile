@@ -7,7 +7,7 @@ OBJCOPY=${CROSS_}objcopy
 ISA=rv64imafd_zifencei
 ABI=lp64
 
-INCLUDE = -I $(shell pwd)/include -I $(shell pwd)/arch/riscv/include
+INCLUDE = -I $(shell pwd)/include -I $(shell pwd)/arch/riscv/include -I $(shell pwd)/arch/riscv/user
 CF = -march=$(ISA) -mabi=$(ABI) -mcmodel=medany -fno-builtin -ffunction-sections -fdata-sections -nostartfiles -nostdlib -nostdinc -static -lgcc -Wl,--nmagic -Wl,--gc-sections -g 
 CFLAG = ${CF} ${INCLUDE} -DSJF
 

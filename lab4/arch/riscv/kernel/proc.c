@@ -6,6 +6,7 @@
 #include "printk.h"
 #include "test.h"
 #include "string.h"
+#include "elf.h"
 
 //arch/riscv/kernel/proc.c
 
@@ -26,6 +27,53 @@ struct task_struct* task[NR_TASKS]; // 线程数组, 所有的线程都保存在
 //extern uint64 task_test_priority[]; // test_init 后, 用于初始化 task[i].priority 的数组
 //extern uint64 task_test_counter[];  // test_init 后, 用于初始化 task[i].counter  的数组
 
+static uint64_t load_program(struct task_struct* task) {
+    Elf64_Ehdr* ehdr = (Elf64_Ehdr*)uapp_start;
+
+    uint64_t phdr_start = (uint64_t)ehdr + ehdr->e_phoff;
+    int phdr_cnt = ehdr->e_phnum;
+  
+    Elf64_Phdr* phdr;
+    int load_phdr_cnt = 0;
+    for (int i = 0; i < phdr_cnt; i++) {
+        phdr = (Elf64_Phdr*)(phdr_start + sizeof(Elf64_Phdr) * i);
+        if (phdr->p_type == PT_LOAD) {
+            // alloc space and copy content
+            uint64_t offset = (uint64_t)(phdr->p_vaddr) - PGROUNDDOWN(phdr->p_vaddr);   //align to the page
+            uint64_t size = PGROUNDUP(phdr->p_memsz + offset) / PGSIZE;
+            uint64_t target_addr = alloc_pages(size);
+            uint64_t src_start = (uint64_t)uapp_start + phdr->p_offset;
+            for (int j = 0; j < phdr->p_memsz; ++j)
+                ((char*)(target_addr + offset))[j] = ((char *)src_start)[j];
+            memset((void *)(target_addr + offset + phdr->p_filesz), 0, phdr->p_memsz - phdr->p_filesz);
+            
+            // do mapping
+            uint64_t perm = 0x11;
+                perm |= (1 & phdr->p_flags) << 3;         //X
+                perm |= (2 & phdr->p_flags) << 1;         //W
+                perm |= (4 & phdr->p_flags) >> 1;         //R
+            create_mapping(task->pgd, PGROUNDDOWN(phdr->p_vaddr), target_addr - PA2VA_OFFSET,
+                phdr->p_memsz + offset, perm);
+        }
+    }
+  
+    // allocate user stack and do mapping
+    uint64 U_stack_top = alloc_page();
+    create_mapping(task->pgd, USER_END - PGSIZE, U_stack_top - PA2VA_OFFSET, PGSIZE, 23);
+  
+    // following code has been written for you
+    // set user stack
+    // pc for the user program
+    task->thread.sepc = ehdr->e_entry;
+    // sstatus bits set
+    // SPP=0, SPIE=1, SUM=1
+    task->thread.sstatus = csr_read(sstatus);
+    task->thread.sstatus &= ~(1 << 8);
+    task->thread.sstatus |= 1 << 18;
+    task->thread.sstatus |= 1 << 5;
+    // user stack for user program
+    task->thread.sscratch = USER_END;
+}
 
 void task_init() {
     // 1. 调用 kalloc() 为 idle 分配一个物理页
@@ -48,32 +96,38 @@ void task_init() {
         task[i]->counter = 0;
         task[i]->priority = rand();
         task[i]->thread.ra = (uint64)&__dummy;
-        task[i]->thread.sepc = USER_START;
-        // SPP=0, SPIE=1, SUM=1
-        task[i]->thread.sstatus = csr_read(sstatus);
-        task[i]->thread.sstatus &= ~(1 << 8);
-        task[i]->thread.sstatus |= (1 << 5);
-        task[i]->thread.sstatus |= (1 << 18);
-
-        task[i]->thread.sscratch = USER_END;
-        task[i]->thread.sp = (uint64)task[i] + PGSIZE;
-
-        //为用户栈分配空间
-        uint64_t U_stack_top = kalloc();
-    
+        task[i]->thread.sp = (uint64)task[i] + PGSIZE;        
         //创建进程自己的页表并拷贝
         task[i]->pgd = (pagetable_t)alloc_page();
         for (int j = 0; j < 512; ++j) 
             task[i]->pgd[j] = swapper_pg_dir[j];
-        uint64_t size = ((uint64_t)uapp_end - (uint64_t)uapp_start) / PGSIZE + 1;
-        uint64_t copy_addr = alloc_pages(size);
-        for (int j = 0; j < size * PGSIZE; ++j) 
-            ((char *)copy_addr)[j] = uapp_start[j];
-        create_mapping(task[i]->pgd, USER_START, (uint64)copy_addr - PA2VA_OFFSET,
-            size * PGSIZE, 31); // 映射用户段   U|X|W|R|V
-        create_mapping(task[i]->pgd, USER_END - PGSIZE,
-            U_stack_top - PA2VA_OFFSET, PGSIZE, 23); // 映射用户栈 U|-|W|R|V
+
+        load_program(task[i]);
+        
+        // task[i]->thread.sepc = USER_START;
+        // // SPP=0, SPIE=1, SUM=1
+        // task[i]->thread.sstatus = csr_read(sstatus);
+        // task[i]->thread.sstatus &= ~(1 << 8);
+        // task[i]->thread.sstatus |= (1 << 5);
+        // task[i]->thread.sstatus |= (1 << 18);
+        // task[i]->thread.sscratch = USER_END;
+
+
+        // //为用户栈分配空间
+        // uint64_t U_stack_top = kalloc();
+
+        // //拷贝二进制文件置进程专用的物理内存
+        // uint64_t size = PGROUNDUP((uint64_t)uapp_end - (uint64_t)uapp_start) / PGSIZE;
+        // uint64_t copy_addr = alloc_pages(size);
+        // for (int j = 0; j < uapp_end - uapp_start; ++j) 
+        //     ((char *)copy_addr)[j] = uapp_start[j];
+
+        // create_mapping(task[i]->pgd, USER_START, (uint64)copy_addr - PA2VA_OFFSET,
+        //     size * PGSIZE, 31); // 映射用户段   U|X|W|R|V
+        // create_mapping(task[i]->pgd, USER_END - PGSIZE,
+        //     U_stack_top - PA2VA_OFFSET, PGSIZE, 23); // 映射用户栈 U|-|W|R|V
     }
+    // to get the offset of the members in the struct
     #define OFFSET(TYPE , MEMBER) ((unsigned long)(&(((TYPE *)0)->MEMBER)))
 
     const uint64 OffsetOfThreadInTask = (uint64)OFFSET(struct task_struct, thread);
@@ -248,31 +302,4 @@ void schedule(){
         printk("No runnable tasks with remaining time, system is idle or re-schedule\n");
     }
     #endif
-}
-
-void create_mapping_without_eq(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm) {
-    uint64 VPN[3];
-    uint64 *page_table[3];
-    uint64 new_page;
-
-    for (uint64 addr = va; addr < va + sz; addr += PGSIZE, pa += PGSIZE) {
-        page_table[2] = pgtbl;
-
-        // 为每个级别的页表计算VPN
-        VPN[2] = (addr >> 30) & 0x1ff;
-        VPN[1] = (addr >> 21) & 0x1ff;
-        VPN[0] = (addr >> 12) & 0x1ff;
-
-        // 检查并创建每个级别的页表项
-        for (int level = 2; level > 0; level--) {
-            if ((page_table[level][VPN[level]] & 1) == 0) {
-                new_page = kalloc();
-                page_table[level][VPN[level]] = (((new_page - PA2VA_OFFSET) >> 12) << 10) | 1;
-            }
-            page_table[level - 1] = (uint64 *)(((page_table[level][VPN[level]] >> 10) << 12) + PA2VA_OFFSET);
-        }
-
-        // 设置最后一级页表项
-        page_table[0][VPN[0]] = (perm & 0x3ff) | ((pa >> 12) << 10);
-    }
 }
