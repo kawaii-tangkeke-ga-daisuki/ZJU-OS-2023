@@ -98,7 +98,6 @@ _S_mode:
     csrw sscratch, sp
     mv sp, t0   # switch stack from S-mode to U-mode
     
-
 __return:
     sret
     # return from trap

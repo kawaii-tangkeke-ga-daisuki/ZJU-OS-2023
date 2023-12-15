@@ -12,5 +12,5 @@ int start_kernel() {
     schedule();
     test(); // DO NOT DELETE !!!
 
-	return 0;
+    return 0;
 }
