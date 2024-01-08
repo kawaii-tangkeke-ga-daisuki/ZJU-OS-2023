@@ -46,7 +46,6 @@ _traps:
 
     ld x0,0*8(sp)
     ld x1,1*8(sp)
-    ld x2,2*8(sp)
     ld x3,3*8(sp)
     ld x4,4*8(sp)
     ld x5,5*8(sp)
@@ -78,7 +77,8 @@ _traps:
     ld x31,31*8(sp)
     ld t0,32*8(sp) 
     csrw sepc,t0
-    addi x2,x2,33*8   
+    ld x2,2*8(sp)
+    addi x2,x2,33*8 
     # restore sepc and 32 registers (x2(sp) should be restore last) from stack
 
     sret

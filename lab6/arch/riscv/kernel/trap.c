@@ -5,20 +5,13 @@
 #include "mm.h"
 #include "printk.h"
 
-typedef struct pt_regs {
-    uint64 x[32];  //x0---x31
-    uint64 sepc;
-    uint64 sstatus;
-    uint64 stval;//trap value
-    uint64 sscratch;
-    uint64 scause;
-} pt_regs;
-
 extern struct task_struct* current;
 extern char ramdisk_start[];
 extern char ramdisk_end[];
+extern void clock_set_next_event(void);
+extern void create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm);
 
-void do_page_fault(pt_regs* regs) {
+void do_page_fault(struct pt_regs* regs) {
     /*
      1. 通过 stval 获得访问出错的虚拟内存地址（Bad Address）
      2. 通过 find_vma() 查找 Bad Address 是否在某个 vma 中
@@ -59,11 +52,11 @@ void do_page_fault(pt_regs* regs) {
 }
 
 
-void trap_handler(uint64 scause, uint64 sepc, pt_regs* regs) {
+void trap_handler(uint64 scause, uint64 sepc, struct pt_regs* regs) {
     if (scause >> 63){ // 通过 `scause` 判断trap类型
         if (scause % 8 == 5) { // 如果是interrupt 判断是否是timer interrupt
             // 如果是timer interrupt 则打印输出相关信息, 并通过 `clock_set_next_event()` 设置下一次时钟中断
-            //printk("[S] Supervisor mode time interrupt!\n"); 
+            printk("[S] Supervisor mode time interrupt!\n"); 
             clock_set_next_event();
             do_timer();
         }
@@ -79,6 +72,9 @@ void trap_handler(uint64 scause, uint64 sepc, pt_regs* regs) {
             size_t siz = (size_t)regs->x[12];
 
             ret = sys_write(fd, buffer, siz);
+        } else if (syscall_id == SYS_CLONE)
+        {
+            ret = sys_clone(regs);
         } else {
             printk("[S] Unhandled syscall: %lx\n", syscall_id);
             while (1);
@@ -87,17 +83,17 @@ void trap_handler(uint64 scause, uint64 sepc, pt_regs* regs) {
         regs->sepc += 4;
     } else if (scause == 12) {
         // inst page fault
-        printk("Instruction page fault.\n");
+        printk("[S] Instruction page fault.\n");
         printk("sepc: %lx, scause: %lx, stval: %lx.\n", csr_read(sepc), csr_read(scause), csr_read(stval));
         do_page_fault(regs);
     } else if (scause == 13) {
         // ld page fault
-        printk("LD page fault.\n");
+        printk("[S] LD page fault.\n");
         printk("sepc: %lx, scause: %lx, stval: %lx.\n", csr_read(sepc), csr_read(scause), csr_read(stval));
         do_page_fault(regs);
     } else if (scause == 15) {
         // sd/amo page fault
-        printk("SD/SMO page fault.\n");
+        printk("[S] SD/SMO page fault.\n");
         printk("sepc: %lx, scause: %lx, stval: %lx.\n", csr_read(sepc), csr_read(scause), csr_read(stval));
         do_page_fault(regs);
     } else {

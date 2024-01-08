@@ -24,15 +24,15 @@ static inline long fork()
 
 int global_variable = 0;
 
-int main() {
+// int main() {
 
-  int pid;
+//   int pid;
 
-    while(1) {
-        printf("[PID = %d] is running, variable: %d\n", getpid(), global_variable++);
-        for (unsigned int i = 0; i < 0x3FFFFFFF; i++);
-    }
-}
+//     while(1) {
+//         printf("[PID = %d] is running, variable: %d\n", getpid(), global_variable++);
+//         for (unsigned int i = 0; i < 0x3FFFFFFF; i++);
+//     }
+// }
 
 /*
     Test your `fork` using the following `main`s
@@ -78,16 +78,16 @@ int main() {
 //     return 0;
 // }
 
-// int main() {
+int main() {
 
-//     printf("[U] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
-//     fork();
+    printf("[U] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
+    fork();
 
-//     printf("[U] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
-//     fork();
+    printf("[U] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
+    fork();
 
-//     while(1) {
-//         printf("[U] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
-//         for (unsigned int i = 0; i < 0x7FFFFFF; i++);
-//     }
-// }
+    while(1) {
+        printf("[U] pid: %ld is running!, global_variable: %d\n", getpid(), global_variable++);
+        for (unsigned int i = 0; i < 0x7FFFFFF; i++);
+    }
+}

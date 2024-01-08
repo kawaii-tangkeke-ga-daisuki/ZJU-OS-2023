@@ -56,7 +56,6 @@ _S_mode:
 
     ld x0,0*8(sp)
     ld x1,1*8(sp)
-    ld x2,2*8(sp)
     ld x3,3*8(sp)
     ld x4,4*8(sp)
     ld x5,5*8(sp)
@@ -90,6 +89,7 @@ _S_mode:
     csrw sepc, t0
     ld t0, 33*8(sp)
     csrw sstatus, t0
+    ld x2,2*8(sp)
     addi x2,x2,34*8   
     # restore sepc and 32 registers (x2(sp) should be restore last) from stack
 

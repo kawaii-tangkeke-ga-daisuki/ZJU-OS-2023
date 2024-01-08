@@ -28,7 +28,7 @@ struct vm_area_struct {
                         那么这块 VMA 起始地址对应的文件内容相对文件起始位置的偏移量，
                                           也就是 ELF 中各段的 p_offset 值 */
 
-    uint64 vm_content_size_in_file;   // 对应的文件内容的长度。为什么还需要这个域? 和 (vm_end-vm_start)一比，不是冗余了吗? 
+    uint64 vm_content_size_in_file;   // 对应的文件内容的长度。为什么还需要这个域?
     // 因为可能会有一些空洞，比如bss段，这个段在文件中是没有内容的，但是在内存中需要分配空间
 };
 

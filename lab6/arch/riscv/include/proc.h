@@ -2,7 +2,7 @@
 
 #include "types.h"
 
-#define NR_TASKS  (1 + 3) // 用于控制 最大线程数量 （idle 线程 + 31 内核线程）
+#define NR_TASKS  (1 + 15) // 用于控制 最大线程数量 （idle 线程 + 31 内核线程）
 
 #define TASK_RUNNING    0 // 为了简化实验, 所有的线程都只有一种状态
 
@@ -16,6 +16,15 @@ typedef unsigned long* pagetable_t;
 #define VM_R_MASK         0x0000000000000002
 #define VM_ANONYM         0x0000000000000001
 
+struct pt_regs {
+    uint64 x[32];  //x0---x31
+    uint64 sepc;
+    uint64 sstatus;
+    uint64 stval;//trap value
+    uint64 sscratch;
+    uint64 scause;
+};
+
 struct vm_area_struct {
     uint64 vm_start;          /* VMA 对应的用户态虚拟地址的开始   */
     uint64 vm_end;            /* VMA 对应的用户态虚拟地址的结束   */
@@ -28,7 +37,7 @@ struct vm_area_struct {
                         那么这块 VMA 起始地址对应的文件内容相对文件起始位置的偏移量，
                                           也就是 ELF 中各段的 p_offset 值 */
 
-    uint64 vm_content_size_in_file;   // 对应的文件内容的长度。为什么还需要这个域? 和 (vm_end-vm_start)一比，不是冗余了吗? 
+    uint64 vm_content_size_in_file;   // 对应的文件内容的长度。为什么还需要这个域?
     // 因为可能会有一些空洞，比如bss段，这个段在文件中是没有内容的，但是在内存中需要分配空间
 };
 

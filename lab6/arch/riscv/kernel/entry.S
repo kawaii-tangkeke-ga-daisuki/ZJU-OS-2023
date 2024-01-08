@@ -9,7 +9,7 @@ _traps:
     mv sp, t0   # switch stack from U-mode to S-mode
 
 _S_mode:
-    addi sp,sp,-34*8
+    addi sp,sp,-37*8
     sd x0,0*8(sp)
     sd x1,1*8(sp)
     sd x2,2*8(sp)
@@ -46,6 +46,12 @@ _S_mode:
     sd t0, 32*8(sp)
     csrr t0, sstatus
     sd t0, 33*8(sp)
+    csrr t0, stval
+    sd t0, 34*8(sp)
+    csrr t0, sscratch
+    sd t0, 35*8(sp)
+    csrr t0, scause
+    sd t0, 36*8(sp)
     # save 32 registers and sepc to stack
 
     csrr a0, scause
@@ -54,9 +60,10 @@ _S_mode:
     jal trap_handler
     # call trap_handler
 
+    .global __ret_from_fork
+__ret_from_fork:
     ld x0,0*8(sp)
     ld x1,1*8(sp)
-    ld x2,2*8(sp)
     ld x3,3*8(sp)
     ld x4,4*8(sp)
     ld x5,5*8(sp)
@@ -90,7 +97,14 @@ _S_mode:
     csrw sepc, t0
     ld t0, 33*8(sp)
     csrw sstatus, t0
-    addi x2,x2,34*8   
+    ld t0, 34*8(sp)
+    csrw stval, t0
+    ld t0, 35*8(sp)
+    csrw sscratch, t0
+    ld t0, 36*8(sp)
+    csrw scause, t0
+    ld x2,2*8(sp)
+    addi x2,x2,37*8   
     # restore sepc and 32 registers (x2(sp) should be restore last) from stack
 
     csrr t0, sscratch
@@ -98,7 +112,6 @@ _S_mode:
     csrw sscratch, sp
     mv sp, t0   # switch stack from S-mode to U-mode
     
-
 __return:
     sret
     # return from trap

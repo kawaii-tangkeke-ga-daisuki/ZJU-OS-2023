@@ -46,7 +46,6 @@ static uint64_t load_program(struct task_struct* task) {
         }
     }
 
-
     // Set up the rest of the task structure.
     task->thread.sepc = ehdr->e_entry;
     task->thread.sstatus = csr_read(sstatus);
@@ -72,24 +71,27 @@ void task_init() {
     current = idle;
     task[0] = idle;
 
-    for (int i = 1; i < NR_TASKS; ++i) { // 初始化其他进程
-        task[i] = (struct task_struct*)kalloc();
-        task[i]->pid = i;
-        task[i]->state = TASK_RUNNING;
-        task[i]->counter = 0;
-        task[i]->priority = rand();
-        task[i]->thread.ra = (uint64)&__dummy;
-        task[i]->thread.sp = (uint64)task[i] + PGSIZE;        
-        //创建进程自己的页表并拷贝
-        task[i]->pgd = (pagetable_t)alloc_page();
-        for (int j = 0; j < 512; ++j) 
-            task[i]->pgd[j] = swapper_pg_dir[j];
-        task[i]->vma_cnt = 0;
-        do_mmap(task[i], USER_END - PGSIZE, PGSIZE, VM_R_MASK | VM_W_MASK | VM_ANONYM, 0, 0);
+    //只初始化一个用户态进程
+    task[1] = (struct task_struct*)kalloc();
+    task[1]->pid = 1;
+    task[1]->state = TASK_RUNNING;
+    task[1]->counter = 0;
+    task[1]->priority = rand();
+    task[1]->thread.ra = (uint64)&__dummy;
+    task[1]->thread.sp = (uint64)task[1] + PGSIZE;        
+    //创建进程自己的页表并拷贝
+    task[1]->pgd = (pagetable_t)alloc_page();
+    for (int j = 0; j < 512; ++j) 
+        task[1]->pgd[j] = swapper_pg_dir[j];
+    task[1]->vma_cnt = 0;
+    do_mmap(task[1], USER_END - PGSIZE, PGSIZE, VM_R_MASK | VM_W_MASK | VM_ANONYM, 0, 0);
+    task[1]->thread.sepc = load_program(task[1]);
+    printk("[S] Initialized: pid: 1, priority: 1, counter: 0\n");
 
-        task[i]->thread.sepc = load_program(task[i]);
-    }
-    printk("...proc_init done!\n");
+    for (int i = 2; i < NR_TASKS; ++i)
+        task[i] = NULL;
+
+    return;
 }
 
 
@@ -158,13 +160,13 @@ void schedule(){
 				c = task[i]->counter, next = i;
 		    }
 		if (c) {
-            printk("\nswitch to [PID = %d PRIORITY = %d COUNTER = %d]\n", next, task[next]->priority, task[next]->counter);
+            printk("\n[S] switch to [PID = %d PRIORITY = %d COUNTER = %d]\n", next, task[next]->priority, task[next]->counter);
             break;
         }
 		for(i = 1; i < NR_TASKS ; ++i)
 			if (task[i]) {
 				task[i]->counter = (task[i]->counter >> 1) + task[i]->priority / 10;
-                printk("SET [PID = %d PRIORITY = %d COUNTER = %d]\n", i, task[i]->priority, task[i]->counter);
+                printk("[S] SET [PID = %d PRIORITY = %d COUNTER = %d]\n", i, task[i]->priority, task[i]->counter);
             }
 	}
     switch_to(task[next]);
@@ -175,7 +177,9 @@ void schedule(){
     int is_all_zero = 1;
     // Check if all task counters are zero
     for(int i = 1; i < NR_TASKS; ++i) {
-        if(task[i]->counter > 0) {
+        if (!task[i])
+            continue;
+        if (task[i]->counter > 0) {
             is_all_zero = 0;
             break;
         }
@@ -184,13 +188,17 @@ void schedule(){
     // If all counters are zero, reset them to random values
     if(is_all_zero) {
         for(int i = 1; i < NR_TASKS; ++i) {
+            if (!task[i])
+                continue;
             task[i]->counter = rand();
-            printk("SET [PID = %d COUNTER = %d]\n", i, task[i]->counter);
+            printk("[S] SET [PID = %d PRIORITY = %d COUNTER = %d]\n", i, task[i]->priority, task[i]->counter);
         }
     }
 
     // Find the task with the smallest id that is still running
     for(int i = 1; i < NR_TASKS; ++i) {
+        if (!task[i])
+            continue;
         if(task[i]->state == TASK_RUNNING && task[i]->counter > 0) {
             selected_task_id = i;
             break;
@@ -199,7 +207,7 @@ void schedule(){
 
     // If a task is found, switch to it
     if(selected_task_id != -1) {
-        printk("\nswitch to [PID = %d COUNTER = %d]\n", task[selected_task_id]->pid, task[selected_task_id]->counter);
+        printk("\n[S] switch to [PID = %d PRIORITY = %d COUNTER = %d]\n", task[selected_task_id]->pid, task[selected_task_id]->priority, task[selected_task_id]->counter);
         switch_to(task[selected_task_id]);
     } else {
         // No task to schedule
@@ -209,12 +217,14 @@ void schedule(){
 
     #ifdef SJF
     int selected_task_id = -1;
-    int min_remaining_time = 1e10;
+    int min_remaining_time = (int)1e10;
     int is_all_zero = 1;
 
     // Check if all running task counters are zero
     for(int i = 1; i < NR_TASKS; ++i) {
-        if(task[i]->state == TASK_RUNNING && task[i]->counter > 0) {
+        if (!task[i])
+            continue;
+        if (task[i]->state == TASK_RUNNING && task[i]->counter > 0) {
             is_all_zero = 0;
             break;
         }
@@ -223,13 +233,17 @@ void schedule(){
     // If all running task counters are zero, reset them to random values
     if(is_all_zero) {
         for(int i = 1; i < NR_TASKS; ++i) {
+            if (!task[i])
+                continue;
             task[i]->counter = rand();
-            printk("SET [PID = %d COUNTER = %d]\n", task[i]->pid, task[i]->counter);
+            printk("[S] SET [PID = %d PRIORITY = %d COUNTER = %d]\n", task[i]->pid, task[i]->priority, task[i]->counter);
         }
     }
 
     // Find the running task with the smallest remaining time
     for(int i = 1; i < NR_TASKS; ++i) {
+        if (!task[i])
+            continue;
         if(task[i]->state == TASK_RUNNING && task[i]->counter > 0 && task[i]->counter < min_remaining_time) {
             min_remaining_time = task[i]->counter;
             selected_task_id = i;
@@ -238,7 +252,7 @@ void schedule(){
 
     // If a task is found, switch to it
     if(selected_task_id != -1) {
-        printk("\nswitch to [PID = %d COUNTER = %d]\n", task[selected_task_id]->pid, task[selected_task_id]->counter);
+        printk("\n[S] switch to [PID = %d PRIORITY = %d COUNTER = %d]\n", task[selected_task_id]->pid, task[selected_task_id]->priority, task[selected_task_id]->counter);
         switch_to(task[selected_task_id]);
     } else {
         // No task to schedule
