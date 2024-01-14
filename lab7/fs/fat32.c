@@ -87,7 +87,7 @@ struct fat32_file fat32_open_file(const char *path) {
             if (name[k] <= 'z' && name[k] >= 'a') 
                 name[k] += 'A' - 'a';
         if (memcmp(filename, name, 8) == 0) {
-            file.cluster = (uint32_t)entry->starthi + entry->startlow;
+            file.cluster = ((uint32_t)entry->starthi << 16) | entry->startlow;
             file.dir.index = entry_index;
             file.dir.cluster = 2;
             return file;
@@ -175,10 +175,11 @@ int64_t fat32_extend_filesz(struct file* file, uint64_t new_size) {
 
 int64_t fat32_read(struct file* file, void* buf, uint64_t len) {
     uint32_t file_size = get_file_size(file);
-    uint64_t read_len = 0;
-    uint32_t cluster = file->fat32_file.cluster;  
+    uint64_t read_len = 0; 
     while (read_len < len && file->cfo < file_size) {
+        uint32_t cluster = file->fat32_file.cluster; 
         for (uint32_t clusteri = 0; clusteri < file->cfo / (fat32_volume.sec_per_cluster * VIRTIO_BLK_SECTOR_SIZE) && cluster < 0x0FFFFFF8; ++clusteri) {
+            //cluster += 1;
             cluster = next_cluster(cluster);
         }
         uint64_t sector = cluster_to_sector(cluster);
@@ -203,8 +204,8 @@ int64_t fat32_read(struct file* file, void* buf, uint64_t len) {
 
 int64_t fat32_write(struct file* file, const void* buf, uint64_t len) {
     uint64_t write_len = 0;
-    uint32_t cluster = file->fat32_file.cluster;
     while (len > 0) {
+        uint32_t cluster = file->fat32_file.cluster;
         for (uint32_t clusteri = 0; clusteri < file->cfo / (fat32_volume.sec_per_cluster * VIRTIO_BLK_SECTOR_SIZE) && cluster < 0x0FFFFFF8; ++clusteri) {
             cluster = next_cluster(cluster);
         }
