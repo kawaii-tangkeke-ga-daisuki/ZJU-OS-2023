@@ -13,7 +13,7 @@ void setup_vm(void) {
         低 30 bit 作为 页内偏移 这里注意到 30 = 9 + 9 + 12， 即我们只使用根页表， 根页表的每个 entry 都对应 1GB 的区域。 
     3. Page Table Entry 的权限 V | R | W | X 位设置为 1
     */
-    memset(early_pgtbl,0x0,PGSIZE);
+    memset(early_pgtbl, 0x0, PGSIZE);
 
     int index = PHY_START >> 30 & 0x1ff;
 
@@ -30,11 +30,11 @@ void setup_vm_final(void) {
     memset(swapper_pg_dir, 0x0, PGSIZE);
     // No OpenSBI mapping required
     // mapping kernel text X|-|R|V
-    create_mapping(swapper_pg_dir, (uint64)&_stext, (uint64)&_stext - PA2VA_OFFSET, (uint64)&_srodata - (uint64)&_stext,11);
+    create_mapping(swapper_pg_dir, (uint64)&_stext, (uint64)&_stext - PA2VA_OFFSET, (uint64)&_srodata - (uint64)&_stext, PTE_X | PTE_R | PTE_V);
     // mapping kernel rodata -|-|R|V
-    create_mapping(swapper_pg_dir, (uint64)&_srodata, (uint64)&_srodata - PA2VA_OFFSET, (uint64)&_sdata - (uint64)&_srodata,3);
+    create_mapping(swapper_pg_dir, (uint64)&_srodata, (uint64)&_srodata - PA2VA_OFFSET, (uint64)&_sdata - (uint64)&_srodata, PTE_R | PTE_V);
     // mapping other memory -|W|R|V
-    create_mapping(swapper_pg_dir, (uint64)&_sdata, (uint64)&_sdata - PA2VA_OFFSET,PHY_SIZE - ((uint64)&_sdata - (uint64)&_stext),7);
+    create_mapping(swapper_pg_dir, (uint64)&_sdata, (uint64)&_sdata - PA2VA_OFFSET,PHY_SIZE - ((uint64)&_sdata - (uint64)&_stext), PTE_W | PTE_R | PTE_V);
     create_mapping(swapper_pg_dir, io_to_virt(VIRTIO_START), VIRTIO_START, VIRTIO_SIZE * VIRTIO_COUNT, PTE_W | PTE_R | PTE_V);
     // set satp with swapper_pg_dir
 asm volatile (

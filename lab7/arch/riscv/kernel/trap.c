@@ -4,12 +4,12 @@
 #include "string.h"
 #include "mm.h"
 #include "printk.h"
+#include "clock.h"
+#include "vm.h"
 
 extern struct task_struct* current;
 extern char ramdisk_start[];
 extern char ramdisk_end[];
-extern void clock_set_next_event(void);
-extern void create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm);
 
 void do_page_fault(struct pt_regs* regs) {
     /*

@@ -1,4 +1,9 @@
 .extern start_kernel
+.extern setup_vm
+.extern setup_vm_final
+.extern mm_init
+.extern task_init
+.extern _traps
 
 .set PA2VA_OFFSET, 0xffffffdf80000000
 .set _shift_left_satp_mode8, 0x3f

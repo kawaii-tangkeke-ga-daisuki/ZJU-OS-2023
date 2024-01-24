@@ -175,6 +175,8 @@ void schedule(){
     int is_all_zero = 1;
     // Check if all task counters are zero
     for(int i = 1; i < NR_TASKS; ++i) {
+        if (!task[i])
+            continue;
         if(task[i]->counter > 0) {
             is_all_zero = 0;
             break;
@@ -184,6 +186,8 @@ void schedule(){
     // If all counters are zero, reset them to random values
     if(is_all_zero) {
         for(int i = 1; i < NR_TASKS; ++i) {
+            if (!task[i])
+                continue;
             task[i]->counter = rand();
             printk("SET [PID = %d COUNTER = %d]\n", i, task[i]->counter);
         }
@@ -191,6 +195,8 @@ void schedule(){
 
     // Find the task with the smallest id that is still running
     for(int i = 1; i < NR_TASKS; ++i) {
+        if (!task[i])
+            continue;
         if(task[i]->state == TASK_RUNNING && task[i]->counter > 0) {
             selected_task_id = i;
             break;
@@ -209,11 +215,13 @@ void schedule(){
 
     #ifdef SJF
     int selected_task_id = -1;
-    int min_remaining_time = 1e10;
+    int min_remaining_time = (int)1e10;
     int is_all_zero = 1;
 
     // Check if all running task counters are zero
     for(int i = 1; i < NR_TASKS; ++i) {
+        if (!task[i])
+            continue;
         if(task[i]->state == TASK_RUNNING && task[i]->counter > 0) {
             is_all_zero = 0;
             break;
@@ -223,6 +231,8 @@ void schedule(){
     // If all running task counters are zero, reset them to random values
     if(is_all_zero) {
         for(int i = 1; i < NR_TASKS; ++i) {
+            if (!task[i])
+                continue;
             task[i]->counter = rand();
             printk("SET [PID = %d COUNTER = %d]\n", task[i]->pid, task[i]->counter);
         }
@@ -230,6 +240,8 @@ void schedule(){
 
     // Find the running task with the smallest remaining time
     for(int i = 1; i < NR_TASKS; ++i) {
+        if (!task[i])
+            continue;
         if(task[i]->state == TASK_RUNNING && task[i]->counter > 0 && task[i]->counter < min_remaining_time) {
             min_remaining_time = task[i]->counter;
             selected_task_id = i;

@@ -9,11 +9,11 @@
 #include "elf.h"
 #include "virtio.h"
 #include "mbr.h"
+#include "vm.h"
 
 //arch/riscv/kernel/proc.c
 
 extern void __dummy();
-extern void create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm);
 
 extern char ramdisk_start[];
 extern char ramdisk_end[];

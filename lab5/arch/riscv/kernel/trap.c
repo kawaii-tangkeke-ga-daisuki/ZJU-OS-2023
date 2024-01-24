@@ -17,6 +17,8 @@ typedef struct pt_regs {
 extern struct task_struct* current;
 extern char ramdisk_start[];
 extern char ramdisk_end[];
+extern void clock_set_next_event(void);
+extern void create_mapping(uint64 *pgtbl, uint64 va, uint64 pa, uint64 sz, uint64 perm);
 
 void do_page_fault(pt_regs* regs) {
     /*
